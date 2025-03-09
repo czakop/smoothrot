@@ -51,11 +51,24 @@ def parse_args() -> argparse.Namespace:
         help="Random seed (default: 0)",
     )
 
+    # wandb arguments
+    parser.add_argument(
+        "--wandb",
+        action="store_true",
+        help="Log to wandb",
+    )
+    parser.add_argument("--wandb_project", type=str, default=None, help="Wandb project")
+
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+
+    if args.wandb:
+        import wandb
+
+        wandb.init(project=args.wandb_project, config=args)
 
     model, tokenizer = load_model(
         args.model, return_tokenizer=True, hf_token=args.hf_token
@@ -73,6 +86,8 @@ def main():
 
     ppl = evaluate_ppl(model, input_ids, args.device)
     print(f"Perplexity: {ppl}")
+    if args.wandb:
+        wandb.log({"ppl": ppl})
 
 
 if __name__ == "__main__":
