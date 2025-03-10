@@ -11,4 +11,6 @@ python main.py \
     --quantize \
     --w_bits 8 \
     --a_bits 8 \
+    --smooth \
+    --smooth_calib_samples 4 \
     --seed 0

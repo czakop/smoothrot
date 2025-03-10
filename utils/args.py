@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
         "--num_samples",
         default=512,
         type=int,
-        help="Number of samples (default: 512)",
+        help="Number of samples (default: 512), use <=0 for full dataset",
     )
     parser.add_argument(
         "--batch_size",
@@ -71,6 +71,31 @@ def parse_args() -> argparse.Namespace:
         "--a_per_tensor",
         action="store_true",
         help="Use per-tensor quantization for activations",
+    )
+
+    # smoothing arguments
+    parser.add_argument(
+        "--smooth",
+        action="store_true",
+        help="Smooth model",
+    )
+    parser.add_argument(
+        "--alpha",
+        default=0.5,
+        type=float,
+        help="Smoothing factor (default: 0.5)",
+    )
+    parser.add_argument(
+        "--smooth_calib_seqlen",
+        default=512,
+        type=int,
+        help="Sequence length for calibration (default: 512)",
+    )
+    parser.add_argument(
+        "--smooth_calib_samples",
+        default=512,
+        type=int,
+        help="Number of calibration samples for smoothing (default: 512)",
     )
 
     # wandb arguments
