@@ -10,6 +10,9 @@ docker run --rm -it \
     --num_samples 1 \
     --batch_size 1 \
     --device cuda \
-    --seed 0 \
     --wandb \
-    --wandb_project smoothrot
+    --wandb_project smoothrot \
+    --quantize \
+    --w_bits 8 \
+    --a_bits 8 \
+    --seed 0

@@ -21,7 +21,7 @@ def evaluate_ppl(
     model = model.to(device)
     nlls = [
         batch_nll(model, input_tensor[i].to(device))
-        for i in tqdm(range(input_tensor.shape[0]))
+        for i in tqdm(range(input_tensor.shape[0]), desc="Evaluating PPL")
     ]
     ppl = torch.exp(torch.cat(nlls).mean())
     return ppl.item()

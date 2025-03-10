@@ -1,65 +1,7 @@
-import argparse
-
+from utils.args import parse_args
 from utils.dataset import get_wikitext2
 from utils.eval import evaluate_ppl
-from utils.model import ModelType, load_model
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Capture activations of a model")
-
-    parser.add_argument(
-        "--model",
-        type=ModelType,
-        default=ModelType.LLAMA_2_7B,
-        help="Model name (default: meta-llama/Llama-2-7b-hf)",
-    )
-    parser.add_argument(
-        "--seqlen",
-        default=2048,
-        type=int,
-        help="Sequence length (default: 2048)",
-    )
-    parser.add_argument(
-        "--num_samples",
-        default=512,
-        type=int,
-        help="Number of samples (default: 512)",
-    )
-    parser.add_argument(
-        "--batch_size",
-        default=1,
-        type=int,
-        help="Batch size (default: 1)",
-    )
-    parser.add_argument(
-        "--hf_token",
-        default=None,
-        type=str,
-        help="Hugging Face token",
-    )
-    parser.add_argument(
-        "--device",
-        default="cpu",
-        type=str,
-        help="Device to use (default: cpu)",
-    )
-    parser.add_argument(
-        "--seed",
-        default=0,
-        type=int,
-        help="Random seed (default: 0)",
-    )
-
-    # wandb arguments
-    parser.add_argument(
-        "--wandb",
-        action="store_true",
-        help="Log to wandb",
-    )
-    parser.add_argument("--wandb_project", type=str, default=None, help="Wandb project")
-
-    return parser.parse_args()
+from utils.model import load_model
 
 
 def main():
@@ -71,8 +13,19 @@ def main():
         wandb.init(project=args.wandb_project, config=args)
 
     model, tokenizer = load_model(
-        args.model, return_tokenizer=True, hf_token=args.hf_token
+        args.model, return_tokenizer=True, hf_token=args.hf_token, device_map="cpu"
     )
+
+    if args.quantize:
+        from utils.quant import QuantConfig, quantize_model
+
+        w_quant_config = QuantConfig(
+            bits=args.w_bits, asym=args.w_asym, per_tensor=args.w_per_tensor
+        )
+        a_quant_config = QuantConfig(
+            bits=args.a_bits, asym=args.a_asym, per_tensor=args.a_per_tensor
+        )
+        quantize_model(model, w_quant_config, a_quant_config, args.device)
 
     input_ids = get_wikitext2(
         tokenizer,
