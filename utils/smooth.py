@@ -32,7 +32,7 @@ def get_act_scales(
 
     hooks = []
     for name, m in model.named_modules():
-        if isinstance(m, torch.nn.Linear):
+        if "down_proj" in name:
             hooks.append(
                 m.register_forward_hook(functools.partial(stat_input_hook, name=name))
             )
@@ -88,22 +88,6 @@ def smooth_model(
     for name, module in model.named_modules():
         if not isinstance(module, (LlamaDecoderLayer, MistralDecoderLayer)):
             continue
-
-        # attention qkv projections
-        attn_ln = module.input_layernorm
-        qkv = [
-            module.self_attn.q_proj,
-            module.self_attn.k_proj,
-            module.self_attn.v_proj,
-        ]
-        qkv_input_scales = scales[name + ".self_attn.q_proj"]
-        smooth_act(attn_ln, qkv, qkv_input_scales, alpha)
-
-        # mlp up and gate projections
-        ffn_ln = module.post_attention_layernorm
-        fcs = [module.mlp.gate_proj, module.mlp.up_proj]
-        fcs_input_scales = scales[name + ".mlp.gate_proj"]
-        smooth_act(ffn_ln, fcs, fcs_input_scales, alpha)
 
         # mlp down projection
         smooth_act(
