@@ -11,6 +11,7 @@ python main.py \
     --quantize \
     --w_bits 4 \
     --a_bits 4 \
+    --smooth \
     --smooth_calib_samples 4 \
     --rotate \
     --seed 0
