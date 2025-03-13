@@ -7,7 +7,9 @@ import torch
 import transformers
 
 if TYPE_CHECKING:
-    from transformers import PreTrainedModel, PreTrainedTokenizerBase
+    from transformers import PreTrainedTokenizerBase
+
+    from .types import MODEL_TYPE
 
 
 class ModelType(str, Enum):
@@ -22,7 +24,7 @@ def load_model(
     device_map: str = "auto",
     return_tokenizer: bool = False,
     hf_token: str | None = None,
-) -> tuple[PreTrainedModel, PreTrainedTokenizerBase | None]:
+) -> tuple[MODEL_TYPE, PreTrainedTokenizerBase | None]:
     model = transformers.AutoModelForCausalLM.from_pretrained(
         model_type.value, torch_dtype=dtype, device_map=device_map, token=hf_token
     )

@@ -2,11 +2,8 @@ import functools
 
 import torch
 from tqdm import tqdm
-from transformers.models.llama.modeling_llama import LlamaDecoderLayer, LlamaRMSNorm
-from transformers.models.mistral.modeling_mistral import (
-    MistralDecoderLayer,
-    MistralRMSNorm,
-)
+
+from .types import DECODER_LAYER_TYPE, LAYERNORM_TYPE
 
 
 @torch.no_grad()
@@ -60,7 +57,7 @@ def smooth_act(
     for fc in fcs:
         assert isinstance(fc, torch.nn.Linear) and fc.in_features == act_scales.numel()
 
-    if isinstance(prev_module, (LlamaRMSNorm, MistralRMSNorm)):
+    if isinstance(prev_module, LAYERNORM_TYPE):
         assert prev_module.weight.numel() == act_scales.numel()
     elif isinstance(prev_module, torch.nn.Linear):
         assert prev_module.out_features == act_scales.numel()
@@ -73,7 +70,7 @@ def smooth_act(
     weight_scales = weight.max(dim=0)[0].clamp(min=1e-5)
     scales = (act_scales.pow(alpha) / weight_scales.pow(1 - alpha)).clamp(min=1e-5)
 
-    if isinstance(prev_module, (LlamaRMSNorm, MistralRMSNorm)):
+    if isinstance(prev_module, LAYERNORM_TYPE):
         prev_module.weight.div_(scales)
     else:
         prev_module.weight.div_(scales.view(-1, 1))
@@ -86,7 +83,7 @@ def smooth_model(
     model: torch.nn.Module, scales: dict[str, torch.Tensor], alpha: float = 0.5
 ):
     for name, module in model.named_modules():
-        if not isinstance(module, (LlamaDecoderLayer, MistralDecoderLayer)):
+        if not isinstance(module, DECODER_LAYER_TYPE):
             continue
 
         # mlp down projection

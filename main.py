@@ -1,4 +1,5 @@
 import torch
+import transformers
 
 from utils.args import parse_args
 from utils.dataset import get_wikitext2
@@ -8,6 +9,7 @@ from utils.model import load_model
 
 def main():
     args = parse_args()
+    transformers.set_seed(args.seed)
 
     if args.wandb:
         import wandb
@@ -34,6 +36,17 @@ def main():
         smooth_model(model, act_scales, args.alpha)
         torch.cuda.empty_cache()
 
+    if args.rotate:
+        from utils.rotation import (
+            fuse_layernorms,
+            online_had_hook_factory,
+            rotate_model,
+        )
+
+        fuse_layernorms(model)
+        rotate_model(model, args.device)
+        torch.cuda.empty_cache()
+
     if args.quantize:
         from utils.quant import QuantConfig, quantize_model
 
@@ -45,6 +58,16 @@ def main():
         )
         quantize_model(model, w_quant_config, a_quant_config, args.device)
         torch.cuda.empty_cache()
+
+    if args.rotate:
+        for layer in model.model.layers:
+            layer.mlp.down_proj.register_forward_pre_hook(online_had_hook_factory())
+
+            layer.self_attn.o_proj.register_forward_pre_hook(
+                online_had_hook_factory(
+                    had_dim=model.config.hidden_size // model.config.num_attention_heads
+                )
+            )
 
     input_ids = get_wikitext2(
         tokenizer,

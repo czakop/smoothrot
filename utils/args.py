@@ -98,6 +98,13 @@ def parse_args() -> argparse.Namespace:
         help="Number of calibration samples for smoothing (default: 512)",
     )
 
+    # rotation arguments
+    parser.add_argument(
+        "--rotate",
+        action="store_true",
+        help="Rotate model",
+    )
+
     # wandb arguments
     parser.add_argument(
         "--wandb",
