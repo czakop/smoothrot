@@ -87,7 +87,6 @@ def fuse_layernorms(model: MODEL_TYPE) -> None:
         reset_layernorm(layer.input_layernorm)
 
     # Fuse the linear operations in the final layer norm and the head.
-
     fuse_ln_linear(
         model.model.norm,
         [model.lm_head],
@@ -169,9 +168,7 @@ def rotate_mlp_output(
 ) -> None:
     down_proj: torch.nn.Linear = layer.mlp.down_proj
     rotate_linear(down_proj, Q, output=True, device=device)
-    apply_exact_had_to_linear(
-        down_proj, had_dim=-1, output=False
-    )  # apply exact (inverse) hadamard on the weights of mlp output
+    apply_exact_had_to_linear(down_proj, had_dim=-1, output=False)
 
 
 def rotate_ov_proj(layer: DECODER_LAYER_TYPE, head_dim: int):

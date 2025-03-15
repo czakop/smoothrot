@@ -116,6 +116,32 @@ def parse_args() -> argparse.Namespace:
         type=float,
         help="Clipping ratio for quantization (default: 1.0)",
     )
+    ## keys
+    parser.add_argument(
+        "--k_bits",
+        default=16,
+        type=int,
+        help="Key bits (default: 16)",
+    )
+    parser.add_argument(
+        "--k_asym", action="store_true", help="Use asymmetric quantization for keys"
+    )
+    parser.add_argument(
+        "--k_per_head",
+        action="store_true",
+        help="Use per-head quantization for keys",
+    )
+    parser.add_argument(
+        "--k_clip_ratio",
+        default=1.0,
+        type=float,
+        help="Clipping ratio for quantization (default: 1.0)",
+    )
+    parser.add_argument(
+        "--k_rotate",
+        action="store_true",
+        help="Rotate keys",
+    )
     ## values
     parser.add_argument(
         "--v_bits",

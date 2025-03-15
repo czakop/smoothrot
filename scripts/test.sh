@@ -13,6 +13,8 @@ python main.py \
     --w_group_size 128 \
     --w_clip_ratio 0.9 \
     --a_bits 8 \
+    --k_bits 8 \
+    --k_rotate \
     --v_bits 8 \
     --smooth \
     --smooth_calib_samples 4 \
