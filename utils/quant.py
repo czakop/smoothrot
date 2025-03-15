@@ -9,22 +9,25 @@ class QuantConfig:
     bits: int = 8
     asym: bool = True
     per_tensor: bool = False
+    group_size: int = -1
+    clipping_ratio: float = 1.0
 
     def __post_init__(self):
         assert 0 < self.bits <= 16, "Number of bits should be in (0, 16]"
+        assert 0 < self.clipping_ratio <= 1, "Clipping ratio should be in (0, 1]"
 
 
 class Quantizer(torch.nn.Module):
     def __init__(self, config: QuantConfig = QuantConfig()):
         super(Quantizer, self).__init__()
-        self.bits = config.bits
-        self.asym = config.asym
-        self.per_tensor = config.per_tensor
+        self.configure(config)
 
     def configure(self, config: QuantConfig = QuantConfig()):
         self.bits = config.bits
         self.asym = config.asym
         self.per_tensor = config.per_tensor
+        self.group_size = config.group_size
+        self.clipping_ratio = config.clipping_ratio
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if self.bits == 16:
@@ -33,12 +36,14 @@ class Quantizer(torch.nn.Module):
         init_shape = x.shape
         if self.per_tensor:
             reshaped_x = x.reshape(-1, x.shape[-2] * x.shape[-1])
+        elif self.group_size > 0:
+            reshaped_x = x.reshape(-1, self.group_size)
         else:
             reshaped_x = x.reshape(-1, x.shape[-1])
 
         tmp = torch.zeros(reshaped_x.shape[0], device=x.device)
-        xmin = torch.minimum(reshaped_x.min(1)[0], tmp)
-        xmax = torch.maximum(reshaped_x.max(1)[0], tmp)
+        xmin = torch.minimum(reshaped_x.min(1)[0], tmp) * self.clipping_ratio
+        xmax = torch.maximum(reshaped_x.max(1)[0], tmp) * self.clipping_ratio
 
         if self.asym:
             tmp = (xmin == 0) & (xmax == 0)

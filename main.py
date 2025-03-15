@@ -51,10 +51,18 @@ def main():
         from utils.quant import QuantConfig, quantize_model
 
         w_quant_config = QuantConfig(
-            bits=args.w_bits, asym=args.w_asym, per_tensor=args.w_per_tensor
+            bits=args.w_bits,
+            asym=args.w_asym,
+            per_tensor=args.w_per_tensor,
+            group_size=args.w_group_size,
+            clipping_ratio=args.w_clip,
         )
         a_quant_config = QuantConfig(
-            bits=args.a_bits, asym=args.a_asym, per_tensor=args.a_per_tensor
+            bits=args.a_bits,
+            asym=args.a_asym,
+            per_tensor=args.a_per_tensor,
+            group_size=args.a_group_size,
+            clipping_ratio=args.a_clip,
         )
         quantize_model(model, w_quant_config, a_quant_config, args.device)
         torch.cuda.empty_cache()
