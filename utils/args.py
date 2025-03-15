@@ -58,6 +58,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Quantize model",
     )
+    ## weights
     parser.add_argument(
         "--w_bits",
         default=8,
@@ -81,11 +82,12 @@ def parse_args() -> argparse.Namespace:
         help="Group size for per-channel quantization (default: -1)",
     )
     parser.add_argument(
-        "--w_clip",
+        "--w_clip_ratio",
         default=1.0,
         type=float,
         help="Clipping ratio for quantization (default: 1.0)",
     )
+    ## activations
     parser.add_argument(
         "--a_bits",
         default=8,
@@ -109,7 +111,30 @@ def parse_args() -> argparse.Namespace:
         help="Group size for per-channel quantization (default: -1)",
     )
     parser.add_argument(
-        "--a_clip",
+        "--a_clip_ratio",
+        default=1.0,
+        type=float,
+        help="Clipping ratio for quantization (default: 1.0)",
+    )
+    ## values
+    parser.add_argument(
+        "--v_bits",
+        default=16,
+        type=int,
+        help="Value bits (default: 16)",
+    )
+    parser.add_argument(
+        "--v_asym",
+        action="store_true",
+        help="Use asymmetric quantization for values",
+    )
+    parser.add_argument(
+        "--v_per_head",
+        action="store_true",
+        help="Use per-head quantization for values",
+    )
+    parser.add_argument(
+        "--v_clip_ratio",
         default=1.0,
         type=float,
         help="Clipping ratio for quantization (default: 1.0)",

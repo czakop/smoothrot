@@ -11,8 +11,9 @@ python main.py \
     --quantize \
     --w_bits 8 \
     --w_group_size 128 \
-    --w_clip 0.9 \
+    --w_clip_ratio 0.9 \
     --a_bits 8 \
+    --v_bits 8 \
     --smooth \
     --smooth_calib_samples 4 \
     --rotate \

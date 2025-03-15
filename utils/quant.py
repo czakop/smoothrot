@@ -1,7 +1,10 @@
+import argparse
 from dataclasses import dataclass
 
 import torch
 from tqdm import tqdm
+
+from .types import CONFIG_TYPE, MODEL_TYPE
 
 
 @dataclass(frozen=True)
@@ -73,22 +76,50 @@ class QuantWrapper(torch.nn.Module):
         module: torch.nn.Module,
         w_quant_config: QuantConfig,
         a_quant_config: QuantConfig,
-        out_quant: bool = False,
     ):
         super(QuantWrapper, self).__init__()
         assert isinstance(module, torch.nn.Linear), "Only nn.Linear is supported"
         module.weight.data = Quantizer(w_quant_config)(module.weight.data)
         self.module = module
         self.quantizer = Quantizer(a_quant_config)
-        self.out_quant = out_quant
+        self.out_quantizer = None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.quantizer(x)
         y = self.module(x)
-        return self.quantizer(y) if self.out_quant else y
+        return self.out_quantizer(y) if self.out_quantizer else y
 
 
-def add_quant(
+def parse_quant_config(
+    args: argparse.Namespace, config: CONFIG_TYPE
+) -> tuple[QuantConfig, QuantConfig, QuantConfig]:
+    w_quant_config = QuantConfig(
+        bits=args.w_bits,
+        asym=args.w_asym,
+        per_tensor=args.w_per_tensor,
+        group_size=args.w_group_size,
+        clipping_ratio=args.w_clip_ratio,
+    )
+    a_quant_config = QuantConfig(
+        bits=args.a_bits,
+        asym=args.a_asym,
+        per_tensor=args.a_per_tensor,
+        group_size=args.a_group_size,
+        clipping_ratio=args.a_clip_ratio,
+    )
+    v_quant_config = QuantConfig(
+        bits=args.v_bits,
+        asym=args.v_asym,
+        per_tensor=False,
+        group_size=(
+            config.hidden_size // config.num_attention_heads if args.v_per_head else -1
+        ),
+        clipping_ratio=args.v_clip_ratio,
+    )
+    return w_quant_config, a_quant_config, v_quant_config
+
+
+def add_quant_wrapper(
     model: torch.nn.Module, w_quant_config: QuantConfig, a_quant_config: QuantConfig
 ):
     if isinstance(model, QuantWrapper):
@@ -107,21 +138,24 @@ def add_quant(
                 for name, m in tmp.named_children()
             }
     for child in model.children():
-        add_quant(child, w_quant_config, a_quant_config)
+        add_quant_wrapper(child, w_quant_config, a_quant_config)
 
 
 @torch.no_grad()
 def quantize_model(
-    model: torch.nn.Module,
-    w_quant_config: QuantConfig,
-    a_quant_config: QuantConfig,
-    device: str = "cuda",
+    model: MODEL_TYPE,
+    args: argparse.Namespace,
 ):
     model.eval()
+    device = args.device
+    w_quant_config, a_quant_config, v_quant_config = parse_quant_config(
+        args, model.config
+    )
     layers: torch.nn.ModuleList = model.model.layers
     for i in tqdm(range(len(layers)), desc="Quantizing decoder layers"):
         layer = layers[i].to(device)
-        add_quant(layer, w_quant_config, a_quant_config)
+        add_quant_wrapper(layer, w_quant_config, a_quant_config)
+        layer.self_attn.v_proj.out_quantizer = Quantizer(v_quant_config)
         layers[i] = layer.cpu()
         del layer
         torch.cuda.empty_cache()
