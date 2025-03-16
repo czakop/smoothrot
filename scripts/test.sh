@@ -9,9 +9,11 @@ python main.py \
     --wandb \
     --wandb_project smoothrot \
     --quantize \
-    --w_bits 8 \
-    --w_group_size 128 \
-    --w_clip_ratio 0.9 \
+    --w_bits 4 \
+    --w_group_size -1 \
+    --w_clip_ratio 1.0 \
+    --gptq \
+    --gptq_calib_samples 32 \
     --a_bits 8 \
     --k_bits 8 \
     --k_rotate \

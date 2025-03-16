@@ -20,6 +20,7 @@ class ModelType(str, Enum):
 
 def load_model(
     model_type: ModelType,
+    seqlen: int,
     dtype: torch.dtype = torch.float16,
     device_map: str = "auto",
     return_tokenizer: bool = False,
@@ -28,6 +29,7 @@ def load_model(
     model = transformers.AutoModelForCausalLM.from_pretrained(
         model_type.value, torch_dtype=dtype, device_map=device_map, token=hf_token
     )
+    model.seqlen = seqlen
     if return_tokenizer:
         tokenizer = load_tokenizer(model_type)
         return model, tokenizer

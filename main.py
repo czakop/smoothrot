@@ -17,7 +17,11 @@ def main():
         wandb.init(project=args.wandb_project, config=args)
 
     model, tokenizer = load_model(
-        args.model, return_tokenizer=True, hf_token=args.hf_token, device_map="cpu"
+        args.model,
+        args.seqlen,
+        return_tokenizer=True,
+        hf_token=args.hf_token,
+        device_map="cpu",
     )
 
     if args.smooth:

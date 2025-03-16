@@ -87,6 +87,28 @@ def parse_args() -> argparse.Namespace:
         type=float,
         help="Clipping ratio for quantization (default: 1.0)",
     )
+    parser.add_argument(
+        "--gptq",
+        action="store_true",
+        help="Use GPTQ quantization",
+    )
+    parser.add_argument(
+        "--gptq_calib_samples",
+        default=128,
+        type=int,
+        help="Number of calibration samples for GPTQ (default: 128)",
+    )
+    parser.add_argument(
+        "--gptq_percdamp",
+        default=0.01,
+        type=float,
+        help="GPTQ per-channel damping factor (default: 0.01)",
+    )
+    parser.add_argument(
+        "--gptq_act_order",
+        action="store_true",
+        help="GPTQ activation order",
+    )
     ## activations
     parser.add_argument(
         "--a_bits",
