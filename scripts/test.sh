@@ -12,8 +12,7 @@ python main.py \
     --w_bits 4 \
     --w_group_size -1 \
     --w_clip_ratio 1.0 \
-    --gptq \
-    --gptq_calib_samples 32 \
+    --gptq_calib_samples 16 \
     --a_bits 8 \
     --k_bits 8 \
     --k_rotate \
@@ -21,4 +20,6 @@ python main.py \
     --smooth \
     --smooth_calib_samples 4 \
     --rotate \
+    --spinquant \
+    --optimized_rotation_path "R.bin" \
     --seed 0

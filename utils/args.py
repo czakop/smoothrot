@@ -219,6 +219,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Rotate model",
     )
+    parser.add_argument(
+        "--spinquant",
+        action="store_true",
+        help="Use SpinQuant rotation. If False, use QuaRot.",
+    )
+    parser.add_argument(
+        "--optimized_rotation_path",
+        default=None,
+        type=str,
+        help="Path to SpinQuant's optimized rotation matrices",
+    )
 
     # wandb arguments
     parser.add_argument(

@@ -48,7 +48,7 @@ def main():
         )
 
         fuse_layernorms(model)
-        rotate_model(model, args.device)
+        rotate_model(model, args.spinquant, args.optimized_rotation_path, args.device)
         torch.cuda.empty_cache()
 
     if args.quantize:
@@ -60,12 +60,13 @@ def main():
     if args.rotate:
         for layer in model.model.layers:
             layer.mlp.down_proj.register_forward_pre_hook(online_had_hook_factory())
-
-            layer.self_attn.o_proj.register_forward_pre_hook(
-                online_had_hook_factory(
-                    had_dim=model.config.hidden_size // model.config.num_attention_heads
+            if not args.spinquant:
+                layer.self_attn.o_proj.register_forward_pre_hook(
+                    online_had_hook_factory(
+                        had_dim=model.config.hidden_size
+                        // model.config.num_attention_heads
+                    )
                 )
-            )
 
     input_ids = get_wikitext2(
         tokenizer,

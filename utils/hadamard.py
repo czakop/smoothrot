@@ -3,7 +3,11 @@ import math
 import torch
 
 torch.no_grad()
-def hadamard_transform(x: torch.Tensor, device: str = "cuda", dtype: torch.dtype = torch.float32) -> torch.Tensor:
+def hadamard_transform(
+        x: torch.Tensor,
+        device: str = "cuda",
+        dtype: torch.dtype = torch.float32
+    ) -> torch.Tensor:
     x_device = x.device
     x_dtype = x.dtype
     x = x.to(device=device, dtype=dtype)
@@ -23,39 +27,54 @@ def hadamard_transform(x: torch.Tensor, device: str = "cuda", dtype: torch.dtype
     x_ = hadK @ x_
     return x_.reshape(x.shape).to(device=x_device, dtype=x_dtype)
 
-def apply_exact_had_to_linear(linear: torch.nn.Linear, had_dim: int = -1, output: bool = False) -> None:
-    if had_dim != -1:
-        assert is_pow2(had_dim), "Hadamard dimension must be a power of 2!"
-
+def apply_exact_had_to_linear(
+        linear: torch.nn.Linear,
+        had_dim: int = -1,
+        output: bool = False,
+        device: str = "cuda",
+        dtype: torch.dtype = torch.float32
+    ) -> None:
     W_ = linear.weight.data
     
     if had_dim == -1:
         if output:
-            W_ = hadamard_transform(W_.t()).t()
+            W_ = hadamard_transform(W_.t(), device, dtype).t()
         else:
-            W_ = hadamard_transform(W_)
+            W_ = hadamard_transform(W_, device, dtype)
     else:
+        assert is_pow2(had_dim), "Hadamard dimension must be a power of 2!"
         # Apply Hadamard to the last had_dim chunks of the weights
         if output:
             W_ = W_.t()
             transposed_shape = W_.shape
             W_ = hadamard_transform(
-                W_.reshape(-1, transposed_shape[-1]//had_dim, had_dim)
-                ).reshape(transposed_shape).t()
+                W_.reshape(-1, transposed_shape[-1]//had_dim, had_dim),
+                device,
+                dtype
+            ).reshape(transposed_shape).t()
         else:
             raise NotImplementedError("Not implemented (or tested) yet!")
             init_shape = W_.shape
             n = W_.shape[1]
-            W_ = hadamard_transform(W_.reshape(-1, n//had_dim, had_dim), scale=1/math.sqrt(had_dim)).reshape(init_shape)
+            W_ = hadamard_transform(
+                W_.reshape(-1, n//had_dim, had_dim),
+                device,
+                dtype
+            ).reshape(init_shape)
     linear.weight.data = W_
 
-def hadamard_matrix(n: int, random: bool = True, device: str = "cpu") -> torch.Tensor:
+def hadamard_matrix(
+        n: int,
+        random: bool = True,
+        device: str = "cuda",
+        dtype: torch.dtype = torch.float64
+    ) -> torch.Tensor:
     if not random:
-        return hadamard_transform(torch.eye(n)).to(device)
-    Q = torch.randint(low=0, high=2, size=(n,)).to(torch.float64)
+        return hadamard_transform(torch.eye(n)).to(device=device, dtype=dtype)
+    Q = torch.randint(low=0, high=2, size=(n,))
     Q = Q * 2 - 1
-    Q = torch.diag(Q)
-    return hadamard_transform(Q).to(device)
+    Q = torch.diag(Q).to(device=device, dtype=dtype)
+    return hadamard_transform(Q, device, dtype)
 
 def get_hadK(n: int) -> tuple[torch.Tensor, int]:
     if is_pow2(n):
