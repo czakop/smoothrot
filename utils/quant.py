@@ -102,6 +102,10 @@ class Quantizer(torch.nn.Module):
         q = torch.clamp(torch.round(reshaped_x / self.scale) + self.zero, minq, maxq)
         return (self.scale * (q - self.zero)).reshape(x.shape).to(return_dtype)
 
+    def free(self) -> None:
+        self.scale = None
+        self.zero = None
+
 
 class QuantWrapper(torch.nn.Module):
     def __init__(
@@ -119,9 +123,13 @@ class QuantWrapper(torch.nn.Module):
         self.out_quantizer = None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        self.quantizer.free()
         x = self.quantizer(x)
         y = self.module(x)
-        return self.out_quantizer(y) if self.out_quantizer else y
+        if self.out_quantizer:
+            self.out_quantizer.free()
+            return self.out_quantizer(y)
+        return y
 
 
 class PostRoPEWrapper(torch.nn.Module):
