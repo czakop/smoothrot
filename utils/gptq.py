@@ -46,7 +46,7 @@ class GPTQ:
 
         groupsize = self.quantizer.group_size
         if groupsize <= 0:
-            self.quantizer.find_params(W)
+            self.quantizer.calibrate(W)
 
         H = self.H
         del self.H
@@ -85,9 +85,7 @@ class GPTQ:
 
                 if groupsize > 0:
                     if (i1 + i) % groupsize == 0:
-                        self.quantizer.find_params(
-                            W[:, (i1 + i) : (i1 + i + groupsize)]
-                        )
+                        self.quantizer.calibrate(W[:, (i1 + i) : (i1 + i + groupsize)])
 
                 q = self.quantizer(
                     w.unsqueeze(1), enable_reshape=False, return_dtype=torch.float32

@@ -82,12 +82,6 @@ def parse_args() -> argparse.Namespace:
         help="Group size for per-channel quantization (default: -1)",
     )
     parser.add_argument(
-        "--w_clip_ratio",
-        default=1.0,
-        type=float,
-        help="Clipping ratio for quantization (default: 1.0)",
-    )
-    parser.add_argument(
         "--gptq",
         action="store_true",
         help="Use GPTQ quantization",
