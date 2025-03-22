@@ -17,11 +17,11 @@ torch.backends.cudnn.allow_tf32 = False
 
 
 class GPTQ:
-    def __init__(self, layer: torch.nn.Linear, quantizer: Quantizer):
-        self.layer = layer
+    def __init__(self, layers: list[torch.nn.Linear], quantizer: Quantizer):
+        self.layers = layers
         self.quantizer = quantizer
-        self.dev = self.layer.weight.device
-        self.columns = layer.weight.data.shape[1]
+        self.dev = self.layers[0].weight.device
+        self.columns = layers[0].weight.data.shape[1]
         self.H = torch.zeros((self.columns, self.columns), device=self.dev)
         self.nsamples = 0
 
@@ -42,7 +42,7 @@ class GPTQ:
         percdamp=0.01,
         actorder=False,
     ):
-        W = self.layer.weight.data.clone().float()
+        W = torch.cat([layer.weight.data for layer in self.layers], dim=0).float()
 
         groupsize = self.quantizer.group_size
         if groupsize <= 0:
@@ -103,12 +103,14 @@ class GPTQ:
 
         if actorder:
             Q = Q[:, invperm]
-        self.layer.weight.data = Q.reshape(self.layer.weight.shape).to(
-            self.layer.weight.data.dtype
-        )
-        if torch.any(torch.isnan(self.layer.weight.data)):
-            logging.warning("NaN in weights")
-            raise ValueError("NaN in weights")
+
+        sizes = [layer.weight.data.shape[0] for layer in self.layers]
+        split_weights = torch.split(Q, sizes, dim=0)
+        for layer, split_weight in zip(self.layers, split_weights):
+            layer.weight.data.copy_(split_weight.to(layer.weight.data.dtype))
+            if torch.any(torch.isnan(layer.weight.data)):
+                logging.warning("NaN in weights")
+                raise ValueError("NaN in weights")
 
     def free(self):
         self.H = None
@@ -192,7 +194,7 @@ def gptq_fwrd(
 
     outs = torch.zeros_like(inps)
 
-    sequential = [
+    modules = [
         [
             "self_attn.k_proj.module",
             "self_attn.v_proj.module",
@@ -204,34 +206,21 @@ def gptq_fwrd(
     ]
     for i in tqdm(range(len(layers)), desc="GPTQ Quant"):
         layer = layers[i].to(dev)
-        for names in sequential:
-            subset = {n: get_nested_attr(layer, n) for n in names}
 
-            gptq = {}
-            handles = []
+        gptq = {}
+        handles = []
 
-            def add_batch_hook(name):
-                def hook(m, inp, out):
-                    gptq[name].add_batch(inp[0].data)
+        def add_batch_hook(id):
+            def hook(m, inp, out):
+                gptq[id].add_batch(inp[0].data)
 
-                return hook
+            return hook
 
-            for name in subset:
-                gptq[name] = GPTQ(subset[name], w_quantizer)
-                handles.append(subset[name].register_forward_hook(add_batch_hook(name)))
+        for m_id, names in enumerate(modules):
+            subset = [get_nested_attr(layer, n) for n in names]
 
-            for j, batch in enumerate(inps):
-                outs[j] = layer(
-                    batch,
-                    attention_mask=attention_mask,
-                    position_embeddings=position_embeddings,
-                )[0]
-            for h in handles:
-                h.remove()
-
-            for name in subset:
-                gptq[name].quantize(percdamp=percdamp, actorder=act_order)
-                gptq[name].free()
+            gptq[m_id] = GPTQ(subset, w_quantizer)
+            handles.append(subset[0].register_forward_hook(add_batch_hook(m_id)))
 
         for j, batch in enumerate(inps):
             outs[j] = layer(
@@ -239,6 +228,13 @@ def gptq_fwrd(
                 attention_mask=attention_mask,
                 position_embeddings=position_embeddings,
             )[0]
+
+        for h in handles:
+            h.remove()
+
+        for m_id in gptq:
+            gptq[m_id].quantize(percdamp=percdamp, actorder=act_order)
+            gptq[m_id].free()
 
         layers[i] = layer.cpu()
         del layer
