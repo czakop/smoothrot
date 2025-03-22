@@ -194,13 +194,13 @@ def gptq_fwrd(
 
     sequential = [
         [
-            "self_attn.k_proj",
-            "self_attn.v_proj",
-            "self_attn.q_proj",
+            "self_attn.k_proj.module",
+            "self_attn.v_proj.module",
+            "self_attn.q_proj.module",
         ],
-        ["self_attn.o_proj"],
-        ["mlp.up_proj", "mlp.gate_proj"],
-        ["mlp.down_proj"],
+        ["self_attn.o_proj.module"],
+        ["mlp.up_proj.module", "mlp.gate_proj.module"],
+        ["mlp.down_proj.module"],
     ]
     for i in tqdm(range(len(layers)), desc="GPTQ Quant"):
         layer = layers[i].to(dev)

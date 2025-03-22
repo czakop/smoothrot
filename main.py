@@ -5,6 +5,7 @@ from utils.args import parse_args
 from utils.dataset import get_wikitext2
 from utils.eval import evaluate_ppl
 from utils.model import load_model
+from utils.quant import add_linear_wrappers
 
 
 def main():
@@ -49,16 +50,9 @@ def main():
 
         fuse_layernorms(model)
         rotate_model(model, args.spinquant, args.optimized_rotation_path, args.device)
-        torch.cuda.empty_cache()
 
-    if args.quantize:
-        from utils.quant import quantize_model
-
-        quantize_model(model, args)
-        torch.cuda.empty_cache()
-
-    if args.rotate:
         for layer in model.model.layers:
+            add_linear_wrappers(layer)
             layer.mlp.down_proj.register_forward_pre_hook(online_had_hook_factory())
             if not args.spinquant:
                 layer.self_attn.o_proj.register_forward_pre_hook(
@@ -67,6 +61,15 @@ def main():
                         // model.config.num_attention_heads
                     )
                 )
+        torch.cuda.empty_cache()
+    else:
+        add_linear_wrappers(model.model.layers)
+
+    if args.quantize:
+        from utils.quant import quantize_model
+
+        quantize_model(model, args)
+        torch.cuda.empty_cache()
 
     input_ids = get_wikitext2(
         tokenizer,

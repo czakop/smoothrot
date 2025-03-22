@@ -154,23 +154,17 @@ class Quantizer(torch.nn.Module):
         return self._quant_dequant(reshaped_x).reshape(x.shape).to(return_dtype)
 
 
-class QuantWrapper(torch.nn.Module):
-    def __init__(
-        self,
-        module: torch.nn.Module,
-        a_quant_config: QuantConfig,
-        w_quant_config: QuantConfig | None,
-    ):
-        super(QuantWrapper, self).__init__()
+class LinearWrapper(torch.nn.Module):
+    def __init__(self, module: torch.nn.Module):
+        super(LinearWrapper, self).__init__()
         assert isinstance(module, torch.nn.Linear), "Only nn.Linear is supported"
-        if w_quant_config:
-            module.weight.data = Quantizer(w_quant_config)(module.weight.data)
         self.module = module
-        self.quantizer = Quantizer(a_quant_config)
+        self.in_quantizer = None
         self.out_quantizer = None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.quantizer(x)
+        if self.in_quantizer:
+            x = self.in_quantizer(x)
         y = self.module(x)
         return self.out_quantizer(y) if self.out_quantizer else y
 
@@ -230,28 +224,37 @@ def parse_quant_config(
     return w_quant_config, a_quant_config, v_quant_config, k_quant_config
 
 
-def add_quant_wrapper(
-    model: torch.nn.Module,
-    a_quant_config: QuantConfig,
-    w_quant_config: QuantConfig | None,
-) -> None:
-    if isinstance(model, QuantWrapper):
+def add_linear_wrappers(module: torch.nn.Module) -> None:
+    if isinstance(module, LinearWrapper):
         return
-    for attr in dir(model):
-        tmp = getattr(model, attr)
+    for attr in dir(module):
+        tmp = getattr(module, attr)
         if isinstance(tmp, torch.nn.Linear):
-            setattr(model, attr, QuantWrapper(tmp, a_quant_config, w_quant_config))
+            setattr(module, attr, LinearWrapper(tmp))
         elif isinstance(tmp, (torch.nn.Sequential, torch.nn.ModuleList)):
             tmp._modules = {
-                name: (
-                    QuantWrapper(m, a_quant_config, w_quant_config)
-                    if isinstance(m, torch.nn.Linear)
-                    else m
-                )
+                name: (LinearWrapper(m) if isinstance(m, torch.nn.Linear) else m)
                 for name, m in tmp.named_children()
             }
-    for child in model.children():
-        add_quant_wrapper(child, a_quant_config, w_quant_config)
+    for child in module.children():
+        add_linear_wrappers(child)
+
+
+def apply_to_linear_wrappers(
+    module: torch.nn.Module, fn: Callable[[LinearWrapper], None]
+) -> None:
+    if isinstance(module, LinearWrapper):
+        fn(module)
+        return
+    for attr in dir(module):
+        tmp = getattr(module, attr)
+        if isinstance(tmp, LinearWrapper):
+            fn(tmp)
+        elif isinstance(tmp, (torch.nn.Sequential, torch.nn.ModuleList)):
+            for m in tmp.children():
+                apply_to_linear_wrappers(m, fn)
+    for child in module.children():
+        apply_to_linear_wrappers(child, fn)
 
 
 def add_post_rope_wrapper(
@@ -299,11 +302,16 @@ def quantize_model(
             batch_size=args.batch_size,
         )
 
+    def rtn_fwrd(lin: LinearWrapper):
+        lin.module.weight.data = Quantizer(w_quant_config)(lin.module.weight.data)
+
     layers: torch.nn.ModuleList = model.model.layers
     for i in tqdm(range(len(layers)), desc="Quantizing decoder layers"):
         layer = layers[i].to(device)
-        add_quant_wrapper(
-            layer, a_quant_config, w_quant_config if not args.gptq else None
+        if not args.gptq:
+            apply_to_linear_wrappers(layer, rtn_fwrd)
+        apply_to_linear_wrappers(
+            layer, lambda lin: setattr(lin, "in_quantizer", Quantizer(a_quant_config))
         )
         add_post_rope_wrapper(layer.self_attn, k_quant_config, args.k_rotate)
         layer.self_attn.v_proj.out_quantizer = Quantizer(v_quant_config)
