@@ -14,6 +14,12 @@ def parse_args() -> argparse.Namespace:
         help="Model name (default: LLAMA_2_7B)",
     )
     parser.add_argument(
+        "--batch_size",
+        default=1,
+        type=int,
+        help="Batch size (default: 1)",
+    )
+    parser.add_argument(
         "--hf_token",
         default=None,
         type=str,
@@ -44,12 +50,6 @@ def parse_args() -> argparse.Namespace:
         default=512,
         type=int,
         help="Number of samples (default: 512), use <=0 for full dataset",
-    )
-    parser.add_argument(
-        "--batch_size",
-        default=1,
-        type=int,
-        help="Batch size (default: 1)",
     )
 
     # quantization arguments
@@ -189,7 +189,7 @@ def parse_args() -> argparse.Namespace:
         help="Smooth model",
     )
     parser.add_argument(
-        "--alpha",
+        "--smooth_alpha",
         default=0.5,
         type=float,
         help="Smoothing factor (default: 0.5)",

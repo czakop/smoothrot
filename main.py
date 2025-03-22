@@ -37,7 +37,7 @@ def main():
             "cpu",
         )
         act_scales = get_act_scales(model, calib_data, args.device)
-        smooth_model(model, act_scales, args.alpha)
+        smooth_model(model, act_scales, args.smooth_alpha)
         torch.cuda.empty_cache()
 
     if args.rotate:
