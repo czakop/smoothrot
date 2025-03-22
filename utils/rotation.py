@@ -70,7 +70,7 @@ def fuse_layernorms(model: MODEL_TYPE) -> None:
     )
 
     # Fuse the linear operations in Layernorm into the adjacent linear blocks.
-    for layer in model.model.layers:
+    for layer in tqdm(model.model.layers, desc="Fusing layernorms"):
         fuse_ln_linear(
             layer.post_attention_layernorm, [layer.mlp.up_proj, layer.mlp.gate_proj]
         )
