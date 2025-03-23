@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 
 from .dataset import DatasetType
 from .model import ModelType
@@ -80,6 +81,19 @@ def parse_args() -> argparse.Namespace:
             "lambada",
         ],
         help="Tasks to evaluate on (default: piqa hellaswag arc_easy arc_challenge winogrande lambada)",
+    )
+    parser.add_argument(
+        "--save_act_path",
+        default=None,
+        type=Path,
+        help="Path to save activations",
+    )
+    parser.add_argument(
+        "--save_act_layers",
+        nargs="+",
+        default=None,
+        type=int,
+        help="Layers to save activations from",
     )
 
     # quantization arguments
@@ -268,6 +282,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Log to wandb",
     )
-    parser.add_argument("--wandb_project", type=str, default=None, help="Wandb project")
+    parser.add_argument(
+        "--wandb_project",
+        type=str,
+        default=None,
+        help="Wandb project",
+    )
+    parser.add_argument(
+        "--wandb_act_artifact",
+        type=str,
+        default=None,
+        help="Wandb artifact for activations",
+    )
 
     return parser.parse_args()

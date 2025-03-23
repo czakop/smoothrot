@@ -82,7 +82,25 @@ def main():
             "cpu",
         )
 
-        ppl = evaluate_ppl(model, input_ids, args.device)
+        if args.save_act_path:
+            from utils.inference import capture_down_proj_input
+
+            with capture_down_proj_input(
+                model,
+                args.save_act_layers,
+                args.save_act_path / args.model.name,
+                prefix=get_prefix(args) + dataset.name.lower(),
+            ):
+                ppl = evaluate_ppl(model, input_ids, args.device)
+
+            if args.wandb:
+                artifact = wandb.Artifact(args.wandb_act_artifact, type="activations")
+                artifact.add_dir(args.save_act_path)
+                wandb.log_artifact(artifact)
+
+        else:
+            ppl = evaluate_ppl(model, input_ids, args.device)
+
         print(f"Perplexity: {ppl}")
         if args.wandb:
             wandb.log({"ppl": ppl})
@@ -94,6 +112,16 @@ def main():
         print(zero_shot_results)
         if args.wandb:
             wandb.log(zero_shot_results)
+
+
+def get_prefix(args):
+    prefix = ""
+    if args.smooth:
+        prefix += f"smooth_{args.smooth_alpha}_"
+    if args.rotate:
+        prefix += "rot_"
+        prefix += "sq_" if args.spinquant else "qr_"
+    return prefix
 
 
 if __name__ == "__main__":

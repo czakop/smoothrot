@@ -298,7 +298,6 @@ def quantize_model(
             calib_data,
             Quantizer(w_quant_config),
             dev=device,
-            batch_size=args.batch_size,
         )
 
     def rtn_fwrd(lin: LinearWrapper):

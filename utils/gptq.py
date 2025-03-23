@@ -3,10 +3,12 @@ from __future__ import annotations
 import logging
 import math
 import typing
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import torch
 from tqdm import tqdm
+
+from .inference import capture_parameters
 
 if TYPE_CHECKING:
     from .quant import Quantizer
@@ -117,57 +119,6 @@ class GPTQ:
         torch.cuda.empty_cache()
 
 
-class Catcher(torch.nn.Module):
-    def __init__(self, module: torch.nn.Module, input_shape: tuple[int, ...]):
-        super().__init__()
-        self.module = module
-        self.batch_idx = 0
-        self.attention_mask = None
-        self.position_embeddings = None
-        dtype = next(iter(module.parameters())).dtype
-        self.register_buffer("inputs", torch.zeros(*input_shape, dtype=dtype))
-
-    def forward(self, inp: torch.Tensor, **kwargs: Any):
-        self.inputs[self.batch_idx] = inp
-        self.batch_idx += 1
-        if not self.attention_mask:
-            self.attention_mask = kwargs["attention_mask"]
-        if not self.position_embeddings:
-            self.position_embeddings = kwargs["position_embeddings"]
-        raise ValueError("Stop forward pass")
-
-
-def capture_parameters(
-    model: MODEL_TYPE, input_ids: torch.Tensor, dev: str, batch_size: int
-) -> tuple[torch.Tensor, torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
-    model.model.embed_tokens.to(dev)
-    model.model.rotary_emb.to(dev)
-    nbatches = input_ids.numel() // (batch_size * model.seqlen)
-    first_layer_catcher = Catcher(
-        model.model.layers[0],
-        (nbatches, batch_size, model.seqlen, model.config.hidden_size),
-    )
-    model.model.layers[0] = first_layer_catcher.to(dev)
-
-    for batch in input_ids:
-        try:
-            model(batch.to(dev))
-        except ValueError:
-            pass
-
-    model.model.embed_tokens.cpu()
-    model.model.rotary_emb.cpu()
-    model.model.layers[0] = first_layer_catcher.module.cpu()
-
-    torch.cuda.empty_cache()
-
-    return (
-        first_layer_catcher.inputs,
-        first_layer_catcher.attention_mask,
-        first_layer_catcher.position_embeddings,
-    )
-
-
 def get_nested_attr(obj, attr):
     for name in attr.split("."):
         obj = getattr(obj, name)
@@ -181,7 +132,6 @@ def gptq_fwrd(
     w_quantizer: Quantizer,
     percdamp: float = 0.01,
     act_order: bool = False,
-    batch_size: int = 1,
     dev: str = "cuda",
 ):
     use_cache = model.config.use_cache
@@ -189,7 +139,7 @@ def gptq_fwrd(
     layers: typing.Sequence[DECODER_LAYER_TYPE] = model.model.layers
 
     inps, attention_mask, position_embeddings = capture_parameters(
-        model, inputs_ids, dev, batch_size
+        model, inputs_ids, dev
     )
 
     outs = torch.zeros_like(inps)
