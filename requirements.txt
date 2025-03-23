@@ -3,3 +3,4 @@ transformers==4.49.0
 accelerate==1.4.0
 datasets==3.3.2
 wandb==0.19.8
+lm-eval @ git+https://github.com/EleutherAI/lm-evaluation-harness.git@fd93c6c4fcb008b348fe21049a7b8b46d2bdc88e

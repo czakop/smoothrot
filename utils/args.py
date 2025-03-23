@@ -20,6 +20,12 @@ def parse_args() -> argparse.Namespace:
         help="Batch size (default: 1)",
     )
     parser.add_argument(
+        "--seqlen",
+        default=2048,
+        type=int,
+        help="Sequence length (default: 2048)",
+    )
+    parser.add_argument(
         "--hf_token",
         default=None,
         type=str,
@@ -40,16 +46,26 @@ def parse_args() -> argparse.Namespace:
 
     # evaluation arguments
     parser.add_argument(
-        "--seqlen",
-        default=2048,
-        type=int,
-        help="Sequence length (default: 2048)",
-    )
-    parser.add_argument(
-        "--num_samples",
+        "--ppl_samples",
         default=512,
         type=int,
-        help="Number of samples (default: 512), use <=0 for full dataset",
+        help="Number of samples for PPL evaluation (default: 512)",
+    )
+    parser.add_argument(
+        "--lm_eval", action="store_true", help="Evaluate the model on LM Eval tasks."
+    )
+    parser.add_argument(
+        "--lm_eval_tasks",
+        nargs="+",
+        default=[
+            "piqa",
+            "hellaswag",
+            "arc_easy",
+            "arc_challenge",
+            "winogrande",
+            "lambada",
+        ],
+        help="Tasks to evaluate on (default: piqa hellaswag arc_easy arc_challenge winogrande lambada)",
     )
 
     # quantization arguments

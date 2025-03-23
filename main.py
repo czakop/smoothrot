@@ -3,7 +3,7 @@ import transformers
 
 from utils.args import parse_args
 from utils.dataset import get_wikitext2
-from utils.eval import evaluate_ppl
+from utils.eval import evaluate_ppl, evaluate_zero_shot
 from utils.model import load_model
 from utils.quant import add_linear_wrappers
 
@@ -74,7 +74,7 @@ def main():
     input_ids = get_wikitext2(
         tokenizer,
         args.seqlen,
-        args.num_samples,
+        args.ppl_samples,
         args.batch_size,
         True,
         args.seed,
@@ -85,6 +85,14 @@ def main():
     print(f"Perplexity: {ppl}")
     if args.wandb:
         wandb.log({"ppl": ppl})
+
+    if args.lm_eval:
+        zero_shot_results = evaluate_zero_shot(
+            model, tokenizer, args.lm_eval_tasks, args.batch_size, args.device
+        )
+        print(zero_shot_results)
+        if args.wandb:
+            wandb.log(zero_shot_results)
 
 
 if __name__ == "__main__":
