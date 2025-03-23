@@ -101,9 +101,9 @@ def main():
         else:
             ppl = evaluate_ppl(model, input_ids, args.device)
 
-        print(f"Perplexity: {ppl}")
+        print(f"{dataset.name} perplexity: {ppl}")
         if args.wandb:
-            wandb.log({"ppl": ppl})
+            wandb.log({f"{dataset.name.lower()} ppl": ppl})
 
     if args.lm_eval:
         zero_shot_results = evaluate_zero_shot(
