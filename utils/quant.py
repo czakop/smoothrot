@@ -291,7 +291,6 @@ def quantize_model(
             args.gptq_calib_samples,
             args.batch_size,
             False,
-            args.seed,
             "cpu",
         )
         gptq_fwrd(

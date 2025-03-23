@@ -2,7 +2,7 @@ import torch
 import transformers
 
 from utils.args import parse_args
-from utils.dataset import get_wikitext2
+from utils.dataset import load_dataset
 from utils.eval import evaluate_ppl, evaluate_zero_shot
 from utils.model import load_model
 from utils.quant import add_linear_wrappers
@@ -28,13 +28,13 @@ def main():
     if args.smooth:
         from utils.smooth import get_act_scales, smooth_model
 
-        calib_data = get_wikitext2(
+        calib_data = load_dataset(
+            args.smooth_calib_dataset,
             tokenizer,
             args.smooth_calib_seqlen,
             args.smooth_calib_samples,
             args.batch_size,
             False,
-            args.seed,
             "cpu",
         )
         act_scales = get_act_scales(model, calib_data, args.device)
@@ -71,20 +71,21 @@ def main():
         quantize_model(model, args)
         torch.cuda.empty_cache()
 
-    input_ids = get_wikitext2(
-        tokenizer,
-        args.seqlen,
-        args.ppl_samples,
-        args.batch_size,
-        True,
-        args.seed,
-        "cpu",
-    )
+    for dataset in args.eval_dataset:
+        input_ids = load_dataset(
+            dataset,
+            tokenizer,
+            args.seqlen,
+            args.eval_samples,
+            args.batch_size,
+            True,
+            "cpu",
+        )
 
-    ppl = evaluate_ppl(model, input_ids, args.device)
-    print(f"Perplexity: {ppl}")
-    if args.wandb:
-        wandb.log({"ppl": ppl})
+        ppl = evaluate_ppl(model, input_ids, args.device)
+        print(f"Perplexity: {ppl}")
+        if args.wandb:
+            wandb.log({"ppl": ppl})
 
     if args.lm_eval:
         zero_shot_results = evaluate_zero_shot(

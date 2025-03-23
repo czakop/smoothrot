@@ -1,5 +1,6 @@
 import argparse
 
+from .dataset import DatasetType
 from .model import ModelType
 
 
@@ -11,7 +12,8 @@ def parse_args() -> argparse.Namespace:
         "--model",
         type=ModelType,
         default=ModelType.LLAMA_2_7B,
-        help="Model name (default: LLAMA_2_7B)",
+        choices=[t.value for t in list(ModelType)],
+        help=f"Model name (default: {ModelType.LLAMA_2_7B.value})",
     )
     parser.add_argument(
         "--batch_size",
@@ -46,10 +48,22 @@ def parse_args() -> argparse.Namespace:
 
     # evaluation arguments
     parser.add_argument(
-        "--ppl_samples",
-        default=512,
+        "--eval_dataset",
+        nargs="+",
+        type=DatasetType,
+        default=[DatasetType.WIKITEXT2],
+        choices=[
+            DatasetType.WIKITEXT2.value,
+            DatasetType.C4_NEW.value,
+            DatasetType.PTB_NEW.value,
+        ],
+        help=f"Dataset to evaluate on (default: {DatasetType.WIKITEXT2.value})",
+    )
+    parser.add_argument(
+        "--eval_samples",
+        default=-1,
         type=int,
-        help="Number of samples for PPL evaluation (default: 512)",
+        help="Number of samples for PPL evaluation (default: -1)",
     )
     parser.add_argument(
         "--lm_eval", action="store_true", help="Evaluate the model on LM Eval tasks."
@@ -209,6 +223,13 @@ def parse_args() -> argparse.Namespace:
         default=0.5,
         type=float,
         help="Smoothing factor (default: 0.5)",
+    )
+    parser.add_argument(
+        "--smooth_calib_dataset",
+        default=DatasetType.WIKITEXT2,
+        type=DatasetType,
+        choices=[t.value for t in list(DatasetType)],
+        help=f"Dataset for calibration (default: {DatasetType.WIKITEXT2.value})",
     )
     parser.add_argument(
         "--smooth_calib_seqlen",
