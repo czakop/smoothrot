@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import datasets
 import torch
+import transformers
 
 if TYPE_CHECKING:
     from transformers import PreTrainedTokenizerBase
@@ -132,7 +133,9 @@ def load_dataset(
     batch_size: int = 1,
     eval_mode: bool = True,
     device: str = "cpu",
+    seed: int = 0,
 ) -> torch.Tensor:
+    transformers.set_seed(seed)
     match dataset_type:
         case DatasetType.WIKITEXT2:
             return get_wikitext2(

@@ -18,10 +18,17 @@ def evaluate_ppl(model: MODEL_TYPE, input_tensor: torch.Tensor, device: str) -> 
         input_tensor = input_tensor.unsqueeze(0)
 
     model.to(device).eval()
+
+    use_cache = model.config.use_cache
+    model.config.use_cache = False
+
     nlls = [
         batch_nll(model, input_tensor[i].to(device))
         for i in tqdm(range(input_tensor.shape[0]), desc="Evaluating PPL")
     ]
+
+    model.config.use_cache = use_cache
+
     ppl = torch.exp(torch.cat(nlls).mean())
     return ppl.item()
 
@@ -34,9 +41,8 @@ def evaluate_zero_shot(
     batch_size: int,
     device: str,
 ) -> dict[str, float]:
-    from lm_eval.models.huggingface import HFLM
-
     import lm_eval
+    from lm_eval.models.huggingface import HFLM
     from lm_eval.tasks import TaskManager
 
     model.to(device).eval()
