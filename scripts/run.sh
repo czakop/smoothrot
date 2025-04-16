@@ -2,13 +2,15 @@
 
 docker run --rm -it \
     --gpus all \
-    czakop/smoothrot:0.1.0 \
+    czakop/smoothrot:0.2.0 \
     python main.py \
     --model meta-llama/Llama-2-7b-hf \
     --seqlen 2048 \
-    --eval_samples -1 \
     --batch_size 8 \
     --device cuda \
+    --eval_samples 64 \
+    --lm_eval \
+    --lm_eval_tasks lambada \
     --wandb \
     --wandb_project smoothrot \
     --wandb_act_scale_artifact act_scales \
@@ -16,6 +18,8 @@ docker run --rm -it \
     --rotate \
     --quantize \
     --w_bits 4 \
+    --gptq \
+    --gptq_calib_samples 8 \
     --a_bits 4 \
     --a_clip_ratio 0.9 \
     --k_bits 4 \
