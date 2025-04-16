@@ -99,9 +99,9 @@ def parse_args() -> argparse.Namespace:
     ## weights
     parser.add_argument(
         "--w_bits",
-        default=8,
+        default=4,
         type=int,
-        help="Weight bits (default: 8)",
+        help="Weight bits (default: 4)",
     )
     parser.add_argument(
         "--w_asym",
@@ -144,9 +144,9 @@ def parse_args() -> argparse.Namespace:
     ## activations
     parser.add_argument(
         "--a_bits",
-        default=8,
+        default=4,
         type=int,
-        help="Activation bits (default: 8)",
+        help="Activation bits (default: 4)",
     )
     parser.add_argument(
         "--a_asym",
@@ -173,9 +173,9 @@ def parse_args() -> argparse.Namespace:
     ## keys
     parser.add_argument(
         "--k_bits",
-        default=16,
+        default=4,
         type=int,
-        help="Key bits (default: 16)",
+        help="Key bits (default: 4)",
     )
     parser.add_argument(
         "--k_asym", action="store_true", help="Use asymmetric quantization for keys"
@@ -199,9 +199,9 @@ def parse_args() -> argparse.Namespace:
     ## values
     parser.add_argument(
         "--v_bits",
-        default=16,
+        default=4,
         type=int,
-        help="Value bits (default: 16)",
+        help="Value bits (default: 4)",
     )
     parser.add_argument(
         "--v_asym",
