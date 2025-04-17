@@ -35,10 +35,9 @@ def capture_parameters(
 ) -> tuple[torch.Tensor, torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
     model.model.embed_tokens.to(dev)
     model.model.rotary_emb.to(dev)
-    nbatches = input_ids.numel() // (input_ids.shape[-2] * model.seqlen)
     first_layer_catcher = Catcher(
         model.model.layers[0],
-        (nbatches, batch_size, model.seqlen, model.config.hidden_size),
+        (*input_ids.shape, model.config.hidden_size),
     )
     model.model.layers[0] = first_layer_catcher.to(dev)
 
