@@ -16,7 +16,6 @@ class DatasetType(str, Enum):
     WIKITEXT2 = "wikitext2"
     C4_NEW = "c4_new"
     PTB_NEW = "ptb_new"
-    PILE = "pile"
     RANDOM = "random"
 
 
@@ -58,6 +57,7 @@ def get_c4_new(
         if num_samples > 0:
             input_ids = _sample_input_ids(input_ids, seqlen, num_samples)
     else:
+        assert num_samples > 0, "num_samples must be > 0 for training"
         data = datasets.load_dataset(
             "allenai/c4",
             data_files={"train": "en/c4-train.00000-of-01024.json.gz"},
@@ -94,26 +94,6 @@ def get_ptb_new(
     return _reshape_and_truncate(input_ids, seqlen, batch_size, device)
 
 
-def get_pile(
-    tokenizer: PreTrainedTokenizerBase,
-    seqlen: int = 2048,
-    num_samples: int = -1,
-    batch_size: int = 1,
-    device: str = "cpu",
-) -> torch.Tensor:
-    data = datasets.load_dataset(
-        "json",
-        data_files="/cpfs01/user/chenmengzhao/prompt_quantization/val.jsonl.zst",
-        split="train",
-    )
-    input_ids = tokenizer(
-        "\n\n".join(data["text"][:1000]), return_tensors="pt"
-    ).input_ids
-    if num_samples > 0:
-        input_ids = _sample_input_ids(input_ids, seqlen, num_samples)
-    return _reshape_and_truncate(input_ids, seqlen, batch_size, device)
-
-
 def get_random(
     tokenizer: PreTrainedTokenizerBase,
     seqlen: int = 2048,
@@ -121,6 +101,7 @@ def get_random(
     batch_size: int = 1,
     device: str = "cpu",
 ) -> torch.Tensor:
+    assert num_samples > 0, "num_samples must be > 0 for training"
     input_ids = torch.randint(0, tokenizer.vocab_size, (1, num_samples * seqlen))
     return _reshape_and_truncate(input_ids, seqlen, batch_size, device)
 
@@ -149,9 +130,6 @@ def load_dataset(
             return get_ptb_new(
                 tokenizer, seqlen, num_samples, batch_size, eval_mode, device
             )
-        case DatasetType.PILE:
-            assert not eval_mode, "PILE dataset is only for training"
-            return get_pile(tokenizer, seqlen, num_samples, batch_size, device)
         case DatasetType.RANDOM:
             assert not eval_mode, "RANDOM dataset is only for training"
             return get_random(tokenizer, seqlen, num_samples, batch_size, device)
