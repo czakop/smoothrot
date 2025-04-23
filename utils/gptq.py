@@ -90,7 +90,9 @@ class GPTQ:
                         self.quantizer.calibrate(W[:, (i1 + i) : (i1 + i + groupsize)])
 
                 q = self.quantizer(
-                    w.unsqueeze(1), enable_reshape=False, return_dtype=torch.float32
+                    w.unsqueeze(1),
+                    enable_reshape=False,
+                    return_dtype=torch.float32,
                 ).flatten()
                 Q1[:, i] = q
 

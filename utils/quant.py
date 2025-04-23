@@ -36,6 +36,35 @@ class QuantConfig:
         assert self.grid > 0, "Grid size should be positive"
 
 
+def asym_quant(x, scale, zero, maxq):
+    scale = scale.to(x.device)
+    zero = zero.to(x.device)
+    q = torch.clamp(torch.round(x / scale) + zero, 0, maxq)
+    return q, scale, zero
+
+
+def asym_dequant(q, scale, zero):
+    return scale * (q - zero)
+
+
+def asym_quant_dequant(x, scale, zero, maxq):
+    return asym_dequant(*asym_quant(x, scale, zero, maxq))
+
+
+def sym_quant(x, scale, maxq):
+    scale = scale.to(x.device)
+    q = torch.clamp(torch.round(x / scale), -(maxq + 1), maxq)
+    return q, scale
+
+
+def sym_dequant(q, scale):
+    return scale * q
+
+
+def sym_quant_dequant(x, scale, maxq):
+    return sym_dequant(*sym_quant(x, scale, maxq))
+
+
 class Quantizer(torch.nn.Module):
     def __init__(self, config: QuantConfig = QuantConfig()):
         super(Quantizer, self).__init__()
@@ -53,6 +82,7 @@ class Quantizer(torch.nn.Module):
         self.clip_opt = config.clip_opt
         self.max_shrink = config.max_shrink
         self.grid = config.grid
+        self.minq, self.maxq = self._get_min_max(torch.device("cpu"))
 
     def _reshape_input(self, x: torch.Tensor) -> torch.Tensor:
         if self.per_tensor:
@@ -74,7 +104,7 @@ class Quantizer(torch.nn.Module):
     def _find_params(
         self, xmin: torch.Tensor, xmax: torch.Tensor, device: torch.device
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        _, maxq = self._get_min_max(device)
+        maxq = self.maxq.to(device)
 
         if self.asym:
             tmp = (xmin == 0) & (xmax == 0)
@@ -100,7 +130,7 @@ class Quantizer(torch.nn.Module):
         if scale is None or zero is None:
             scale = self.scale
             zero = self.zero
-        minq, maxq = self._get_min_max(x.device)
+        minq, maxq = self.minq.to(x.device), self.maxq.to(x.device)
         x_int = torch.clamp(torch.round(x / scale) + zero, minq, maxq)
         return scale * (x_int - zero)
 
@@ -117,21 +147,29 @@ class Quantizer(torch.nn.Module):
         self.scale, self.zero = self._find_params(xmin, xmax, x.device)
 
         if self.clip_opt:
+            maxq = self.maxq.to(x.device)
             best = torch.full([reshaped_x.shape[0]], float("inf"), device=x.device)
             for i in range(int(self.max_shrink * self.grid)):
                 p = 1 - i / self.grid
                 xmin_i = p * xmin
                 xmax_i = p * xmax
 
-                scale_i, zero_i = self._find_params(xmin_i, xmax_i, x.device)
-                q_i = self._quant_dequant(reshaped_x, scale_i, zero_i)
-                err_i = torch.norm(reshaped_x - q_i, p=2.4, dim=1)
+                # scale_i, zero_i = self._find_params(xmin_i, xmax_i, x.device)
+                # q_i = self._quant_dequant(reshaped_x, scale_i, zero_i)
 
-                tmp = err_i < best
+                if self.asym:
+                    scale_i = ((xmax_i - xmin_i) / maxq).unsqueeze(1)
+                    zero_i = torch.round(-xmin_i / scale_i)
+                    q_i = asym_quant_dequant(reshaped_x, scale_i, zero_i, maxq)
+                else:
+                    scale_i = (xmax_i / maxq).unsqueeze(1)
+                    q_i = sym_quant_dequant(reshaped_x, scale_i, maxq)
+                err_i = torch.norm(reshaped_x - q_i, p=2.4, dim=1)
                 if torch.any(tmp):
                     best[tmp] = err_i[tmp]
                     self.scale[tmp] = scale_i[tmp]
-                    self.zero[tmp] = zero_i[tmp]
+                    if self.asym:
+                        self.zero[tmp] = zero_i[tmp]
 
     def forward(
         self,
@@ -144,11 +182,7 @@ class Quantizer(torch.nn.Module):
 
         reshaped_x = self._reshape_input(x) if enable_reshape else x
 
-        if (
-            self.dynamic
-            or not self.scale.count_nonzero()
-            or not self.zero.count_nonzero()
-        ):
+        if self.dynamic or not self.scale.count_nonzero():
             self.calibrate(reshaped_x)
 
         return self._quant_dequant(reshaped_x).reshape(x.shape).to(return_dtype)
