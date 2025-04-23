@@ -3,7 +3,7 @@
 docker run --rm -it \
     --gpus all \
     --env-file .env \
-    czakop/smoothrot:0.2.1 \
+    czakop/smoothrot:0.2.2 \
     python main.py \
     --model meta-llama/Llama-3.2-1B \
     --seqlen 2048 \
