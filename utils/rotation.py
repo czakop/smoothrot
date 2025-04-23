@@ -1,3 +1,4 @@
+import gc
 import typing
 
 import torch
@@ -114,7 +115,6 @@ def rotate_model(
 
     rotate_embeddings(model, Q, device)
     rotate_head(model, Q, device)
-    torch.cuda.empty_cache()
 
     layers: typing.Sequence[DECODER_LAYER_TYPE] = model.model.layers
     for idx in tqdm(range(len(layers)), desc="Rotating"):
@@ -170,6 +170,9 @@ def rotate_linear(
             ).reshape(W_.shape)
 
     linear.weight.data = W_.to(device="cpu", dtype=dtype)
+    del W_
+    gc.collect()
+    torch.cuda.empty_cache()
 
     if hasattr(linear, "bias") and linear.bias is not None:
         b = linear.bias.data.to(device=device, dtype=torch.float64)
