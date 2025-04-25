@@ -86,7 +86,10 @@ def get_ptb_new(
     device: str = "cpu",
 ) -> torch.Tensor:
     data = datasets.load_dataset(
-        "ptb_text_only", "penn_treebank", split="test" if eval_mode else "train"
+        "ptb_text_only",
+        "penn_treebank",
+        split="test" if eval_mode else "train",
+        trust_remote_code=True,
     )
     input_ids = tokenizer(" ".join(data["sentence"]), return_tensors="pt").input_ids
     if num_samples > 0:
