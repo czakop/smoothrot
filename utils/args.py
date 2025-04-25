@@ -46,6 +46,12 @@ def parse_args() -> argparse.Namespace:
         type=int,
         help="Random seed (default: 0)",
     )
+    parser.add_argument(
+        "--job_id",
+        default=None,
+        type=str,
+        help="Job identifier (default: None)",
+    )
 
     # evaluation arguments
     parser.add_argument(
