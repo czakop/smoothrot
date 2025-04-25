@@ -164,7 +164,9 @@ class Quantizer(torch.nn.Module):
                 else:
                     scale_i = (xmax_i / maxq).unsqueeze(1)
                     q_i = sym_quant_dequant(reshaped_x, scale_i, maxq)
+
                 err_i = torch.norm(reshaped_x - q_i, p=2.4, dim=1)
+                tmp = err_i < best
                 if torch.any(tmp):
                     best[tmp] = err_i[tmp]
                     self.scale[tmp] = scale_i[tmp]
