@@ -152,8 +152,6 @@ docker run --rm -it \
 * Calibration runs in seconds on a single A100 GPU
 * Zero added latency compared to QuaRot
 
-Here’s a concise **Foundations & Related Work** section using only the technique names as GitHub-linked items:
-
 ## Foundations & Related Work
 
 SmoothRot builds upon several key open-source quantization techniques:
