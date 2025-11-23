@@ -322,7 +322,7 @@ def quantize_model(
     )
     if args.gptq:
         calib_data = get_wikitext2(
-            load_tokenizer(args.model),
+            load_tokenizer(args.model, args.hf_token),
             args.seqlen,
             args.gptq_calib_samples,
             args.batch_size,

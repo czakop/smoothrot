@@ -34,12 +34,15 @@ def load_model(
     )
     model.seqlen = seqlen
     if return_tokenizer:
-        tokenizer = load_tokenizer(model_type)
+        tokenizer = load_tokenizer(model_type, hf_token)
         return model, tokenizer
     return model, None
 
 
 def load_tokenizer(
     model_type: ModelType,
+    hf_token: str | None = None,
 ) -> PreTrainedTokenizerBase:
-    return transformers.AutoTokenizer.from_pretrained(model_type.value)
+    return transformers.AutoTokenizer.from_pretrained(
+        model_type.value, token=hf_token
+    )
